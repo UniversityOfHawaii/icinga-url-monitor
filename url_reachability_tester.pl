@@ -17,6 +17,8 @@ use Data::Validate::URI qw(is_web_uri);
 use File::Basename;
 use LWP::UserAgent;
 use Monitoring::Plugin;
+use URI::Encode qw(uri_decode);
+
 
 my $DEFAULT_TIMEOUT = 15;
 my $VERSION = '1.0';
@@ -63,7 +65,7 @@ $p->getopts;
 my $timeout = $p->opts->timeout;
 if (defined $timeout) {
     if ($timeout < 0) {
-        $p->plugin_die( " timeout must be >= 0" );
+        $p->plugin_die( "timeout must be >= 0" );
     }
     else {
         print "set timeout to $timeout\n" if $p->opts->verbose;
@@ -79,7 +81,7 @@ if (defined(is_web_uri( $url ))) {
     print "validated URL \'$url\'\n" if $p->opts->verbose;
 }
 else {
-    $p->plugin_die( " invalid URL \'$url\'" );
+    $p->plugin_die( "invalid URL \'$url\'" );
 }
 
 
@@ -97,13 +99,29 @@ print Dumper($res) if ($p->opts->verbose > 2);
 
 my ($resultCode, $message);
 
+my $urlList = "'$url'";
+if ($res->redirects) {
+    my $lastRedirect = ($res->redirects)[0];
+    my $lastLocation = uri_decode($lastRedirect->header('location'));
+    $lastLocation =~ s/\?.*$//;
+    $urlList .= " redirected to '$lastLocation'";
+}
+
 if ($res->is_success) {
     $resultCode = 0;
-    $message = "contacted \'$name\' ($url)";
+    $message = "contacted \'$name\' ($urlList)";
 }
 else {
-    $resultCode = 2;
-    $message = "error contacting \'$name\' ($url): " . $res->status_line;
+    if ($res->redirects) {
+        # initial contact resulted in at least one redirect,
+        # so the actual server-of-interest is alive
+        $resultCode = 1;
+    }
+    else {
+        # no successful redirects before failure
+        $resultCode = 2;
+    }
+    $message = "error contacting \'$name\' ($urlList): " . $res->status_line;
 }
 
 
@@ -130,8 +148,9 @@ Usage: url_reachability_tester -n <name> -u <url> [-t <timeout>] [-v]
 
 Icinga-compatible plugin script which Uses LWP::UserAgent to connect to the
 given URL, returning OK status if the connection attempt succeeds (with an
-HTTP result code of 200), CRITICAL status for any other result (timeout,
-invalid URL, or HTTP status code != 200)
+HTTP result code of 200), WARNING status if at least one redirect succeeds
+but the final one failed, or CRITICAL status for any other result (timeout,
+invalid URL, or last HTTP status code != 200)
 
 The following command-line parameters are supported:
 

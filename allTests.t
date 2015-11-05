@@ -37,14 +37,15 @@ run_output_matches(
         "--url", $timeoutURI
     ],
     [
-        "$script $timeoutResult - error contacting \'$appName\' ($timeoutURI): 500 Can't connect to $timeoutHost (timeout)"
+        "$script $timeoutResult - error contacting \'$appName\' (\'$timeoutURI\'): 500 Can't connect to $timeoutHost (timeout)"
     ],
     undef,
     "unreachable host error"
 );
 
-my $okURI = URI->new("https://www.hawaii.edu/prof");
+my $okURI = URI->new("https://www.hawaii.edu/prof/");
 my $okResult = "OK";
+my $casURI = URI->new("https://authn.hawaii.edu/cas/login");
 run_output_matches(
     $script,
     [
@@ -53,7 +54,7 @@ run_output_matches(
         "--url", $okURI
     ],
     [
-        "$script $okResult - contacted \'$appName\' ($okURI)"
+        "$script $okResult - contacted \'$appName\' (\'$okURI\' redirected to \'$casURI\')"
     ],
     undef,
     "success"
