@@ -29,7 +29,7 @@ my $PROGNAME = basename($0);
 
 # instantiate Monitoring::Plugin
 my $p = Monitoring::Plugin->new(
-    usage => "Usage: %s -n <name> -u <url> [-t <timeout>] [-v]",
+    usage => "Usage: %s -n <name> -u <url> [-t <timeout>] [-v] | --help",
     version => $VERSION,
     shortname => $PROGNAME,
     license =>
